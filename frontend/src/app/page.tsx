@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 
 export default function Home() {
+  const [filter, setFilter] = useState("All");
   const [newTasks, setNewTasks] = useState("");
   const [tasks, setTasks] = useState<
-    { id: string; name: string; completed: boolean }[]
+    { id: string; name: string; completed: boolean; isCompleted: boolean }[]
   >([]);
-  const [todo, setTodo] = useState<{ completed: boolean }[]>([]);
+
   async function createNewTask() {
-    if (!newTasks.trim()) return;
+    // if (!newTasks.trim()) return;
 
     await fetch("http://localhost:3000/tasks/", {
       method: "POST",
@@ -45,6 +46,11 @@ export default function Home() {
     }
   }
 
+  async function toggleComplete(id: string) {
+    await fetch(`http://localhost:3000/tasks/${id}/check`, {
+      method: "PATCH",
+    });
+  }
   async function editTask(task: { id: string; name: string }) {
     const newName = prompt("Edit task", task.name);
 
@@ -59,10 +65,31 @@ export default function Home() {
       loadTasks();
     }
   }
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  // const filteredTasks = tasks.filter((task) => {
+  //   if (filter === "active") return !task.isCompleted;
+  //   if (filter === "completed") return task.isCompleted;
+  //   return true;
+  // });
+
+  const filteredTasks = tasks.filter((task) => {
+    if (filter === "All") {
+      return true;
+    } else {
+      if (filter === "Active") {
+        return !task.isCompleted;
+      } else {
+        return task.isCompleted;
+      }
+    }
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-yellow-100 flex flex-col items-center py-12 px-4 ">
-      <h1 className="text-4xl font-extrabold text-purple-700 mb-8 text-shadow-2xs  mt-20">
+      <h1 className="text-4xl mb-8 text-shadow-2xs mt-20 btn btn-soft bg-transparent btn-secondary">
         Todo List
       </h1>
 
@@ -71,28 +98,62 @@ export default function Home() {
           <input
             type="text"
             placeholder="Add new task..."
-            className="flex-1 input input-bordered input-primary rounded-lg px-4 py-2 text-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="flex-1 input input-bordered input-secondary rounded-lg px-4 py-2 text-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
             value={newTasks}
             onChange={(e) => setNewTasks(e.target.value)}
             onKeyDown={(e) => {
               // if ((e.key === "Shift", e.key === "Enter")) createNewTask();
+              // if ((e.key === "Enter", e.key === "Shift")) createNewTask();
               if (e.key === "Shift") createNewTask();
               if (e.key === "Enter") createNewTask();
             }}
           />
           <button
             onClick={createNewTask}
-            className="btn btn-primary px-6 py-2 rounded-lg text-lg font-semibold hover:bg-purple-700 transition"
+            className="btn btn-secondary px-6 py-2 rounded-lg text-lg font-semibold hover:bg-pink-700 transition"
           >
             Add
           </button>
-          {/* <div className="flex justify-center gap-3 mb-4">
-            <button className="btn btn-sm btn-outline btn-info">All</button>
-            <button className="btn btn-sm btn-outline btn-info">Active</button>
-            <button className="btn btn-sm btn-outline btn-info">
-              Completed
+        </div>
+        <div className="flex justify-center  mb-4 ">
+          <div className="flex flex-row gap-12 ">
+            {["All", "Active", "Completed"].map((s) => (
+              <button
+                key={s}
+                onClick={() => setFilter(s)}
+                className={`btn btn-sm btn-outline btn-info w-20 ${
+                  filter === s ? "btn-info" : "hover:bg-info/20"
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+            {/* <button
+              onClick={() => setFilter("all")}
+              className={`btn btn-sm btn-outline btn-info w-20 ${
+                filter === "all" ? "btn-info" : "hover:bg-info/20"
+              }`}
+            >
+              All
             </button>
-          </div> */}
+
+            <button
+              onClick={() => setFilter("active")}
+              className={`btn btn-sm btn-outline btn-info w-20 ${
+                filter === "active" ? "btn-info" : "hover:bg-info/20"
+              }`}
+            >
+              Active
+            </button>
+            <button
+              onClick={() => setFilter("completed")}
+              className={`btn btn-sm btn-outline btn-info ${
+                filter === "completed" ? "btn-info" : "hover:bg-info/20"
+              }`}
+            >
+              Completed
+            </button> */}
+          </div>
         </div>
 
         <ul className="space-y-4 max-h-[400px] overflow-y-auto">
@@ -100,30 +161,24 @@ export default function Home() {
             <p className="text-center text-gray-500">No tasks yet.</p>
           )}
 
-          {tasks.map((task) => (
+          {filteredTasks.map((task) => (
             <div
               key={task.id}
               className="flex items-center justify-between bg-purple-50 rounded-lg px-4 py-3 shadow-sm hover:shadow-md transition cursor-default"
             >
-              <span
-                className={`${
-                  todo ? "line-through text-gray-400" : "text-black"
-                }`}
-              ></span>
-
               <input
                 type="checkbox"
-                checked={task.completed}
-                onChange={async () => {
-                  await fetch(`http://localhost:3000/tasks/${task.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ completed: !task.completed }),
-                  });
-                  loadTasks();
-                }}
+                defaultChecked={task.isCompleted}
+                // checked={task.completed}
+                className="checkbox checkbox-secondary "
+                onChange={() => toggleComplete(task.id)}
               />
-              <span className="text-gray-700 font-medium mr-40">
+
+              <span
+                className={`text-gray-700 font-medium mr-40 ${
+                  task.completed ? "line-through text-gray-400" : ""
+                }`}
+              >
                 {task.name}
               </span>
 
@@ -135,6 +190,7 @@ export default function Home() {
                 >
                   Edit
                 </button>
+
                 <button
                   onClick={() => deleteTask(task.id)}
                   className="btn btn-sm btn-outline btn-error px-3 py-1 rounded hover:bg-error/20"
